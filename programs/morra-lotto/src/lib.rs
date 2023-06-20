@@ -22,10 +22,13 @@ pub mod morra_lotto {
         game_state.min_move = 0;
         game_state.max_move = 5;
 
+
         // init VaultState
-        ctx.accounts.vault_state.owner = *ctx.accounts.buyer.key;
-        ctx.accounts.vault_state.auth_bump = *ctx.bumps.get("vault_auth").unwrap();
-        ctx.accounts.vault_state.vault_bump = *ctx.bumps.get("vault").unwrap();
+        let vault_state = &mut ctx.accounts.vault_state;
+        vault_state.owner = *ctx.accounts.buyer.key;
+        vault_state.auth_bump = *ctx.bumps.get("vault_auth").unwrap();
+        vault_state.vault_bump = *ctx.bumps.get("vault").unwrap();
+
 
         // game_state.stage_link = 
         Ok(())
@@ -33,11 +36,12 @@ pub mod morra_lotto {
 
     pub fn buy_ticket(ctx: Context<BuyTicket>, hash: [u8;32] ) -> Result<()> {
 
+        // init player
+        ctx.accounts.ticket_state.player = ctx.accounts.buyer.key();
+
         // pass in hash of hand and sum. (have to save in state)
 
-    let hashed = &mut ctx.accounts.ticket_state;
-
-    hashed.hash_players_inputs(player_move, player_guess);
+        // let hashed = &mut ctx.accounts.ticket_state;
 
 
     let game_state = &mut ctx.accounts.game_state;
@@ -91,6 +95,7 @@ pub struct Initialize <'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(hash: [u8;32])]
 pub struct BuyTicket <'info> {
     #[account(mut)]
     pub buyer: Signer<'info>,
@@ -119,21 +124,26 @@ pub struct TicketInfo {
     player: Pubkey,
     player_move: u8,
     guess_sum: u8,
+    hash: [u8; 32],
 }
 
 impl TicketInfo {
-    pub fn hash_players_inputs(&self, player_move: u8, player_guess: u32) {
-        // players move
-         let mut to_hash = player_move.to_le_bytes().to_vec();
-        // players guess of the sum
-        to_hash.extend_from_slice(player_guess.to_le_bytes().as_ref());
-
-        to_hash.extend_from_slice(b"secret");
-
-        hash(to_hash.as_slice());
-
-    }
+    pub const LEN: usize = 8 + 32 + 1 + 1 + 32;
 }
+
+// impl TicketInfo {
+//     pub fn hash_players_inputs(&self, player_move: u8, player_guess: u32) {
+//         // players move
+//          let mut to_hash = player_move.to_le_bytes().to_vec();
+//         // players guess of the sum
+//         to_hash.extend_from_slice(player_guess.to_le_bytes().as_ref());
+
+//         to_hash.extend_from_slice(b"secret");
+
+//         hash(to_hash.as_slice());
+
+//     }
+// }
 
 #[account]
 pub struct GameState {

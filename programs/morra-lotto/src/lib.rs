@@ -15,7 +15,8 @@ pub mod morra_lotto {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, hash: [u8; 32], bet_amount: u64, guess: u8, hand: u8) -> Result<()> {
-        // require!(guess < 11 && hand < 6);
+
+        assert!(guess < 11 && hand < 6, "guess must be less than 11 & hand less than 6");
         // init GameState
         let game = &mut ctx.accounts.game;
         game.player = *ctx.accounts.player.key;
@@ -42,14 +43,12 @@ pub mod morra_lotto {
             let context = CpiContext::new(ctx.accounts.system_program.to_account_info(), accounts);
             system_program::transfer(context, bet_amount)
 
-
-        // game_state.stage_link = 
         // Ok(())
     }
 
     pub fn play(ctx: Context<Play>, hand: u8 ) -> Result<()> {
 
-        // require!(hand < 6);
+        assert!(hand < 6);
 
         let mut game_seed = ctx.accounts.seed.key().to_bytes().to_vec();
         game_seed.extend_from_slice(&[hand]);
@@ -64,13 +63,13 @@ pub mod morra_lotto {
         let win = (game.hand + hand) == game.guess;
 
         if win {
-        let payout  = game.bet;
+        let payout  = game.bet * 2;
         let cpi_program = ctx.accounts.system_program.to_account_info();
         let cpi_accounts = anchor_lang::system_program::Transfer {
             from: ctx.accounts.vault.to_account_info(),
             to: ctx.accounts.player.to_account_info(),
         };
-        
+
         let seeds = &[
             "vault".as_bytes(),
             &ctx.accounts.vault_auth.key().clone().to_bytes(),
@@ -115,7 +114,6 @@ pub struct Initialize <'info> {
     // pub game_state: Account<'info, Game>,
     #[account(init, payer = player, space = Game::LEN)]
     pub game: Account<'info, Game>,
-    //pass in your hash through a seed
     /// CHECK: NO NEED TO CHECK THIS
     pub hash: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,

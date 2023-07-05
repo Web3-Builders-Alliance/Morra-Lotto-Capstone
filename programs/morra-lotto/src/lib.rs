@@ -14,7 +14,7 @@ pub mod morra_lotto {
 
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, hash: [u8; 32], bet_amount: u64, guess: u8, hand: u8) -> Result<()> {
+    pub fn initialize(ctx: Context<Initialize>, hash: [u8; 32], bet_amount: u64, hand: u8, guess: u8) -> Result<()> {
 
         assert!(guess < 11 && hand < 6, "guess must be less than 11 & hand less than 6");
         // init GameState
@@ -52,7 +52,6 @@ pub mod morra_lotto {
 
         let mut game_seed = ctx.accounts.seed.key().to_bytes().to_vec();
         game_seed.extend_from_slice(&[hand]);
-
         let converted_seed: u8 = game_seed.iter().sum();
         let hash = hash_stuff(converted_seed);
 

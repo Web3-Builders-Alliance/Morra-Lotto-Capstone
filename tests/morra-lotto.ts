@@ -9,14 +9,19 @@ import bs58 from "bs58";
 import { createHash } from "crypto";
 // import * as blake3 from "blake3";
 import { hash } from "blake3";
+import { BN } from "bn.js";
 
-describe("morra-lotto", () => {
+describe("morra-lotto", async () => {
   const gameSeed = new Keypair().publicKey;
 
   // follow repo to create a blake3 hash. provide that hash to intialize function
-  let gamesMoves = buildHash(1, 7, gameSeed);
-  let hashAddress = new PublicKey(gamesMoves).toBase58(); // Convert string to address
-  let hashArray = convertStringToArray(hashAddress);
+  let gamesMoves = await buildHash(1, 7, gameSeed);
+  let hashAddress = new PublicKey(new BN(gamesMoves)); // Convert string to address
+  let hashArray = convertStringToArray(gamesMoves);
+
+  // let hashAddress = new PublicKey(
+  //   gamesMoves,
+  // );
 
   // const hash = blake3(32); // 32-byte (256-bit) hash
   // hash.update(gameSeed.toBuffer());

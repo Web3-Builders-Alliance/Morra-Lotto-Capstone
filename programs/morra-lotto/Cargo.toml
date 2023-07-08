@@ -16,9 +16,9 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "=0.26.0"
-anchor-spl = "=0.26.0"
+anchor-lang = "=0.28.0"
+anchor-spl = "=0.28.0"
 getrandom = { version = "0.2.9", features = ["custom"] }
-solana-program = "=1.14.17"
+solana-program = "1.16.0"
 winnow="=0.4.1"
 toml_datetime="=0.6.1"

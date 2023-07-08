@@ -4,7 +4,7 @@ use anchor_lang::{
 };
 use solana_program::blake3::hash;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("8ce52PpcApfmiNVX45tFrudt9kHYJQXSJuC8ZzxUxhMo");
 
 pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
 

@@ -1,31 +1,58 @@
 use anchor_lang::prelude::*;
-use anchor_lang::{
-    system_program::{self, Transfer},
-};
+use anchor_lang::system_program::{self, Transfer};
 use solana_program::blake3::hash;
+
+// input bet amount, choose hand (1-5), make guess (0-10)
 
 declare_id!("8ce52PpcApfmiNVX45tFrudt9kHYJQXSJuC8ZzxUxhMo");
 
 pub const LAMPORTS_PER_SOL: u64 = 1_000_000_000;
-
 
 #[program]
 pub mod morra_lotto {
 
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, hash: [u8; 32], bet_amount: u64, hand: u8, guess: u8) -> Result<()> {
-
-        assert!(guess < 11 && hand < 6, "guess must be less than 11 & hand less than 6");
+    pub fn initialize(
+        ctx: Context<Initialize>,
+        hash: [u8; 32],
+        bet_amount: u64,
+        hand: u8,
+        guess: u8,
+    ) -> Result<()> {
+        assert!(
+            guess < 11 && hand < 6,
+            "guess must be less than 11 & hand less than 6"
+        );
         // init GameState
+
         let game = &mut ctx.accounts.game;
-        game.player = *ctx.accounts.player.key;
-        game.hash = *ctx.accounts.hash.key;
+        game.player1 = *ctx.accounts.player1.key;
+        game.player2 = None;
+        game.hash1 = Pubkey::default();
+        game.hash2 = *ctx.accounts.hash2.key;
+        // game.hand1 = *ctx.accounts.hand1.key;
+        // game.hand2 = *ctx.accounts.hand2.key;
+        // game.guess1 = *ctx.accounts.guess1.key;
+        // game.guess2 = *ctx.accounts.guess2.key;
+
+        game.round = *ctx.accounts.round.key;
+        game.player1_last_round = *ctx.accounts
+
+
+        // player1_last_round: u16,
+        // player2_last_round: u16,
+
+        // bet_amount: u64,
+        // startedAt: i64,
+        // timeout: i64,
+
+
+
+
         game.bet = bet_amount;
         game.guess = guess;
         game.hand = hand;
-
-
 
         // init VaultState
         let vault_state = &mut ctx.accounts.vault_state;
@@ -38,16 +65,15 @@ pub mod morra_lotto {
         let accounts = Transfer {
             from: ctx.accounts.player.to_account_info(),
             to: ctx.accounts.vault.to_account_info(),
-            };
-        
-            let context = CpiContext::new(ctx.accounts.system_program.to_account_info(), accounts);
-            system_program::transfer(context, bet_amount)
+        };
+
+        let context = CpiContext::new(ctx.accounts.system_program.to_account_info(), accounts);
+        system_program::transfer(context, bet_amount)
 
         // Ok(())
     }
 
-    pub fn play(ctx: Context<Play>, hand: u8 ) -> Result<()> {
-
+    pub fn play(ctx: Context<Play>, hand: u8) -> Result<()> {
         assert!(hand < 6);
 
         let mut game_seed = ctx.accounts.seed.key().to_bytes().to_vec();
@@ -57,49 +83,47 @@ pub mod morra_lotto {
 
         let game = &ctx.accounts.game;
 
-    // require_eq!(game, game.hash);
+        // require_eq!(game, game.hash);
 
         let win = (game.hand + hand) == game.guess;
 
         if win {
-        let payout  = game.bet * 2;
-        let cpi_program = ctx.accounts.system_program.to_account_info();
-        let cpi_accounts = anchor_lang::system_program::Transfer {
-            from: ctx.accounts.vault.to_account_info(),
-            to: ctx.accounts.player.to_account_info(),
-        };
+            let payout = game.bet * 2;
+            let cpi_program = ctx.accounts.system_program.to_account_info();
+            let cpi_accounts = anchor_lang::system_program::Transfer {
+                from: ctx.accounts.vault.to_account_info(),
+                to: ctx.accounts.player.to_account_info(),
+            };
 
-        let seeds = &[
-            "vault".as_bytes(),
-            &ctx.accounts.vault_auth.key().clone().to_bytes(),
-            &[ctx.accounts.vault_state.vault_bump]
-        ];
+            let seeds = &[
+                "vault".as_bytes(),
+                &ctx.accounts.vault_auth.key().clone().to_bytes(),
+                &[ctx.accounts.vault_state.vault_bump],
+            ];
 
-        let signer_seeds = &[&seeds[..]];
-        let cpi_context = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
+            let signer_seeds = &[&seeds[..]];
+            let cpi_context = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer_seeds);
 
-        anchor_lang::system_program::transfer(cpi_context, payout)?;
+            anchor_lang::system_program::transfer(cpi_context, payout)?;
         }
         Ok(())
     }
-
-
 }
 
 pub fn hash_stuff(hand: u8) -> [u8; 32] {
-        let to_hash = vec![hand];
-        hash(to_hash.as_slice()).to_bytes()
-    }
+    let to_hash = vec![hand];
+    hash(to_hash.as_slice()).to_bytes()
+}
 
 #[derive(Accounts)]
-pub struct Initialize <'info> {
+pub struct Initialize<'info> {
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(init, payer = player, space = 8 + 32 + 3)]
     pub vault_state: Account<'info, VaultState>,
     #[account(seeds = [b"auth", vault_state.key().as_ref()], bump)]
     ///CHECK: NO NEED TO CHECK THIS
-    pub vault_auth:  UncheckedAccount<'info,>,
+    pub vault_auth: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"vault", vault_auth.key().as_ref()], bump)]
     pub vault: SystemAccount<'info>,
     // #[account(
@@ -119,24 +143,23 @@ pub struct Initialize <'info> {
 }
 
 #[derive(Accounts)]
-pub struct Play <'info> {
+pub struct Play<'info> {
     #[account(mut)]
     pub player: Signer<'info>,
     #[account(init, payer = player, space = 8 + 32 + 3)]
     pub vault_state: Account<'info, VaultState>,
     #[account(seeds = [b"auth", vault_state.key().as_ref()], bump)]
     ///CHECK: NO NEED TO CHECK THIS
-    pub vault_auth:  UncheckedAccount<'info>,
+    pub vault_auth: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"vault", vault_auth.key().as_ref()], bump)]
     pub vault: SystemAccount<'info>,
     #[account(mut, seeds = [b"hash", player.key().as_ref()], bump)]
-       ///CHECK: NO NEED TO CHECK THIS
+    ///CHECK: NO NEED TO CHECK THIS
     pub game_hash: UncheckedAccount<'info>,
     #[account(has_one = player)]
     pub game: Account<'info, Game>,
-        /// CHECK: NO NEED TO CHECK THIS
-    #[account(mut,
-    )]
+    /// CHECK: NO NEED TO CHECK THIS
+    #[account(mut)]
     pub seed: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -152,8 +175,6 @@ pub struct Play <'info> {
 //     pub game_state: Account<'info, Game>,
 //     pub system_program: Program<'info, System>,
 // }
-
-
 
 #[account]
 pub struct VaultState {
@@ -196,20 +217,33 @@ impl TicketInfo {
 //     max_move: u8,
 //     stage_link: u64,
 //     total_sum: u64,
-    
+
 //     // base_pot: u16
 // }
 #[account]
 pub struct Game {
-    player: Pubkey,
-    // hash: [u8; 32],
-    hash: Pubkey,
-    bet: u64,
-    hand: u8,
-    guess: u8,
+    player1: Pubkey,
+    player2: Option<Pubkey>,
+
+    hash1: Pubkey,
+    hash2: Pubkey,
+
+    hand1: u8,
+    hand2: u8,
+
+    guess1: u8,
+    guess2: u8,
+
+    round: u16,
+
+    player1_last_round: u16,
+    player2_last_round: u16,
+
+    bet_amount: u64,
+    startedAt: i64,
+    timeout: i64,
 }
 
- impl Game {
+impl Game {
     pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 1;
 }
-

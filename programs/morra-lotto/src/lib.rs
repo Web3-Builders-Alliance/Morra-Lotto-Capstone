@@ -30,15 +30,14 @@ pub mod morra_lotto {
         game.player1 = *ctx.accounts.player1.key;
         game.player2 = None;
         game.hash1 = Pubkey::default();
-        game.hash2 = *ctx.accounts.hash2.key;
+        // game.hash2 = Pubkey::default();
         // game.hand1 = *ctx.accounts.hand1.key;
         // game.hand2 = *ctx.accounts.hand2.key;
         // game.guess1 = *ctx.accounts.guess1.key;
         // game.guess2 = *ctx.accounts.guess2.key;
 
-        game.round = *ctx.accounts.round.key;
-        game.player1_last_round = *ctx.accounts
-
+        game.game_round = 0;
+        // game.player1_last_round = *ctx.accounts;
 
         // player1_last_round: u16,
         // player2_last_round: u16,
@@ -47,23 +46,20 @@ pub mod morra_lotto {
         // startedAt: i64,
         // timeout: i64,
 
-
-
-
-        game.bet = bet_amount;
-        game.guess = guess;
-        game.hand = hand;
+        game.bet_amount = bet_amount;
+        game.guess1 = guess;
+        game.hand1 = hand;
 
         // init VaultState
         let vault_state = &mut ctx.accounts.vault_state;
-        vault_state.owner = *ctx.accounts.player.key;
+        vault_state.owner = *ctx.accounts.player1.key;
         vault_state.auth_bump = *ctx.bumps.get("vault_auth").unwrap();
         vault_state.vault_bump = *ctx.bumps.get("vault").unwrap();
 
         // Transfer bet amount to vault
 
         let accounts = Transfer {
-            from: ctx.accounts.player.to_account_info(),
+            from: ctx.accounts.player1.to_account_info(),
             to: ctx.accounts.vault.to_account_info(),
         };
 
@@ -85,14 +81,14 @@ pub mod morra_lotto {
 
         // require_eq!(game, game.hash);
 
-        let win = (game.hand + hand) == game.guess;
+        let win = (game.hand1 + hand) == game.guess1;
 
         if win {
-            let payout = game.bet * 2;
+            let payout = game.bet_amount * 2;
             let cpi_program = ctx.accounts.system_program.to_account_info();
             let cpi_accounts = anchor_lang::system_program::Transfer {
                 from: ctx.accounts.vault.to_account_info(),
-                to: ctx.accounts.player.to_account_info(),
+                to: ctx.accounts.player1.to_account_info(),
             };
 
             let seeds = &[
@@ -118,8 +114,8 @@ pub fn hash_stuff(hand: u8) -> [u8; 32] {
 #[derive(Accounts)]
 pub struct Initialize<'info> {
     #[account(mut)]
-    pub player: Signer<'info>,
-    #[account(init, payer = player, space = 8 + 32 + 3)]
+    pub player1: Signer<'info>,
+    #[account(init, payer = player1, space = 8 + 32 + 3)]
     pub vault_state: Account<'info, VaultState>,
     #[account(seeds = [b"auth", vault_state.key().as_ref()], bump)]
     ///CHECK: NO NEED TO CHECK THIS
@@ -135,7 +131,7 @@ pub struct Initialize<'info> {
     // )]
 
     // pub game_state: Account<'info, Game>,
-    #[account(init, payer = player, space = Game::LEN)]
+    #[account(init, payer = player1, space = Game::LEN)]
     pub game: Account<'info, Game>,
     /// CHECK: NO NEED TO CHECK THIS
     pub hash: UncheckedAccount<'info>,
@@ -145,18 +141,18 @@ pub struct Initialize<'info> {
 #[derive(Accounts)]
 pub struct Play<'info> {
     #[account(mut)]
-    pub player: Signer<'info>,
-    #[account(init, payer = player, space = 8 + 32 + 3)]
+    pub player1: Signer<'info>,
+    #[account(init, payer = player1, space = 8 + 32 + 3)]
     pub vault_state: Account<'info, VaultState>,
     #[account(seeds = [b"auth", vault_state.key().as_ref()], bump)]
     ///CHECK: NO NEED TO CHECK THIS
     pub vault_auth: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"vault", vault_auth.key().as_ref()], bump)]
     pub vault: SystemAccount<'info>,
-    #[account(mut, seeds = [b"hash", player.key().as_ref()], bump)]
+    #[account(mut, seeds = [b"hash", player1.key().as_ref()], bump)]
     ///CHECK: NO NEED TO CHECK THIS
     pub game_hash: UncheckedAccount<'info>,
-    #[account(has_one = player)]
+    #[account(has_one = player1)]
     pub game: Account<'info, Game>,
     /// CHECK: NO NEED TO CHECK THIS
     #[account(mut)]
@@ -234,7 +230,7 @@ pub struct Game {
     guess1: u8,
     guess2: u8,
 
-    round: u16,
+    game_round: u16,
 
     player1_last_round: u16,
     player2_last_round: u16,

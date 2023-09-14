@@ -26,29 +26,27 @@ pub mod morra_lotto {
         );
         // init GameState
 
-        let game = &mut ctx.accounts.game;
+        let game = &mut ctx.accounts.game_state;
         game.player1 = *ctx.accounts.player1.key;
         game.player2 = None;
-        game.hash1 = Pubkey::default();
+        // game.hash1 = Pubkey::default();
         // game.hash2 = Pubkey::default();
-        // game.hand1 = *ctx.accounts.hand1.key;
-        // game.hand2 = *ctx.accounts.hand2.key;
-        // game.guess1 = *ctx.accounts.guess1.key;
-        // game.guess2 = *ctx.accounts.guess2.key;
+        game.player1_hand = hand;
+        game.player2_hand = 0;
 
         game.game_round = 0;
+        game.bet_amount = bet_amount;
         // game.player1_last_round = *ctx.accounts;
 
         // player1_last_round: u16,
         // player2_last_round: u16,
 
-        // bet_amount: u64,
         // startedAt: i64,
         // timeout: i64,
 
         game.bet_amount = bet_amount;
-        game.guess1 = guess;
-        game.hand1 = hand;
+        game.player1_guess = guess;
+        game.player1_guess = 0;
 
         // init VaultState
         let vault_state = &mut ctx.accounts.vault_state;
@@ -72,9 +70,9 @@ pub mod morra_lotto {
     pub fn play(ctx: Context<Play>, hand: u8) -> Result<()> {
         assert!(hand < 6);
 
-        let mut game_seed = ctx.accounts.seed.key().to_bytes().to_vec();
-        game_seed.extend_from_slice(&[hand]);
-        let converted_seed: u8 = game_seed.iter().sum();
+        let mut game_state = ctx.accounts.seed.key().to_bytes().to_vec();
+        game_state.extend_from_slice(&[hand]);
+        let converted_seed: u8 = game_state.iter().sum();
         let hash = hash_stuff(converted_seed);
 
         let game = &ctx.accounts.game;
@@ -122,21 +120,22 @@ pub struct Initialize<'info> {
     pub vault_auth: UncheckedAccount<'info>,
     #[account(mut, seeds = [b"vault", vault_auth.key().as_ref()], bump)]
     pub vault: SystemAccount<'info>,
-    // #[account(
-    //     init,
-    //     seeds = [b"state".as_ref(), player.key().as_ref()],
-    //     bump,
-    //     payer = player,
-    //     space = 8 + 8 + 8 + 8 + 1 + 1,
-    // )]
+    #[account(
+        init,
+        seeds = [b"state".as_ref(), player1.key().as_ref()],
+        bump,
+        payer = player1,
+        space = Game::LEN
+    )]
 
-    // pub game_state: Account<'info, Game>,
-    #[account(init, payer = player1, space = Game::LEN)]
-    pub game: Account<'info, Game>,
+    pub game_state: Account<'info, Game>,
+    // #[account(init, payer = player1, space = Game::LEN)]
+    // pub game: Account<'info, Game>,
     /// CHECK: NO NEED TO CHECK THIS
     pub hash: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
+
 
 #[derive(Accounts)]
 pub struct Play<'info> {
@@ -151,7 +150,7 @@ pub struct Play<'info> {
     pub vault: SystemAccount<'info>,
     #[account(mut, seeds = [b"hash", player1.key().as_ref()], bump)]
     ///CHECK: NO NEED TO CHECK THIS
-    pub game_hash: UncheckedAccount<'info>,
+    // pub game_hash: UncheckedAccount<'info>,
     #[account(has_one = player1)]
     pub game: Account<'info, Game>,
     /// CHECK: NO NEED TO CHECK THIS
@@ -219,16 +218,15 @@ impl TicketInfo {
 #[account]
 pub struct Game {
     player1: Pubkey,
-    player2: Option<Pubkey>,
 
     hash1: Pubkey,
     hash2: Pubkey,
 
-    hand1: u8,
-    hand2: u8,
+    player1_hand: u8,
+    player2_hand: u8,
 
-    guess1: u8,
-    guess2: u8,
+    player1_guess: u8,
+    player2_guess: u8,
 
     game_round: u16,
 
@@ -238,8 +236,10 @@ pub struct Game {
     bet_amount: u64,
     startedAt: i64,
     timeout: i64,
+
+    player2: Option<Pubkey>,
 }
 
 impl Game {
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 1 + 1;
+    pub const LEN: usize = 8 + 32 + 32 + 32 + 8 + 1 + 1;
 }
